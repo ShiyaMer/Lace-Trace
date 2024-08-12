@@ -91,7 +91,7 @@ def main():
     conversational_memory_length = 16
     memory = ConversationBufferWindowMemory(k=conversational_memory_length, memory_key="chat_history", return_messages=True)   
     
-    icon_path = "Lib/shoe.svg"
+    icon_path = "Langchain Chatbot/Lib/shoe.svg"
     
     try:
         with open(icon_path, "r") as img_file:
