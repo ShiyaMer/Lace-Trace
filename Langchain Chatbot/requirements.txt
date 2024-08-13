@@ -1,0 +1,13 @@
+st-gsheets-connection
+streamlit
+tensorflow
+langchain
+streamlit_chat
+lime
+PIL
+numpy
+pandas
+inference_sdk
+keras
+treamlit_option_menu
+langchain_groq
