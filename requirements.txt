@@ -4,7 +4,6 @@ tensorflow
 langchain
 streamlit_chat
 lime
-PIL
 numpy
 pandas
 inference_sdk
