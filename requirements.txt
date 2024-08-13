@@ -1,4 +1,4 @@
-st-gsheets-connection
+
 streamlit
 tensorflow
 langchain
@@ -9,5 +9,5 @@ numpy
 pandas
 inference_sdk
 keras
-treamlit_option_menu
+streamlit_option_menu
 langchain_groq
