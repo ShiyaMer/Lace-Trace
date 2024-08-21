@@ -28,27 +28,17 @@ from functions import predict_class
 
 # CSV file handling
 csv_file = "uploaded_images.csv"
-if not os.path.exists(csv_file):
-    df = pd.DataFrame(columns=["session_id", "image_path", "predicted_class"])
-    df.to_csv(csv_file, index=False)
-else:
-    df = pd.read_csv(csv_file)
-    if "session_id" not in df.columns:
-        df["session_id"] = [str(uuid.uuid4()) for _ in range(len(df))]
-        df.to_csv(csv_file, index=False)
-
-# New CSV file for chat history
 chat_csv_file = "chat_history.csv"
-if not os.path.exists(chat_csv_file):
-    chat_df = pd.DataFrame(columns=["session_id", "message_type", "content"])
-    chat_df.to_csv(chat_csv_file, index=False)
-else:
-    chat_df = pd.read_csv(chat_csv_file)
+
+def initialize_csv_files():
+    if not os.path.exists(csv_file):
+        pd.DataFrame(columns=["session_id", "image_path", "predicted_class"]).to_csv(csv_file, index=False)
+    if not os.path.exists(chat_csv_file):
+        pd.DataFrame(columns=["session_id", "message_type", "content"]).to_csv(chat_csv_file, index=False)
 
 def save_image_to_csv(session_id, file, predicted_class):
     image_dir = "uploaded_images"
-    if not os.path.exists(image_dir):
-        os.makedirs(image_dir)
+    os.makedirs(image_dir, exist_ok=True)
     
     img_path = os.path.join(image_dir, file.name)
     with open(img_path, "wb") as f:
@@ -61,21 +51,17 @@ def save_image_to_csv(session_id, file, predicted_class):
 
 def save_chat_message(session_id, message_type, content):
     chat_df = pd.read_csv(chat_csv_file)
-    existing_message = chat_df[(chat_df['session_id'] == session_id) & (chat_df['content'] == content)]
-    if existing_message.empty:
-        new_entry = pd.DataFrame({"session_id": [session_id], "message_type": [message_type], "content": [content]})
-        chat_df = pd.concat([chat_df, new_entry], ignore_index=True)
-        chat_df.to_csv(chat_csv_file, index=False)
+    new_entry = pd.DataFrame({"session_id": [session_id], "message_type": [message_type], "content": [content]})
+    chat_df = pd.concat([chat_df, new_entry], ignore_index=True)
+    chat_df.to_csv(chat_csv_file, index=False)
 
 def process_input():
     if st.session_state.user_input:
         user_input = st.session_state.user_input
         st.session_state.messages.append(HumanMessage(content=user_input))
         save_chat_message(st.session_state.session_id, "human", user_input)
-        if 'image_class' in st.session_state and st.session_state.image_class is not None:
-            combined_input = f"Image Class: {st.session_state.image_class}. User Input: {user_input}"
-        else:
-            combined_input = f"User Input: {user_input}"
+        combined_input = f"Image Class: {st.session_state.image_class}. " if st.session_state.get('image_class') else ""
+        combined_input += f"User Input: {user_input}"
         try:
             response = st.session_state.conversation({"human_input": combined_input})
             st.session_state.messages.append(AIMessage(content=response["text"]))
@@ -85,6 +71,8 @@ def process_input():
         st.session_state.user_input = ""
 
 def main():
+    initialize_csv_files()
+
     system_prompt = 'You are a helpful assistant specializing in shoe authentication.'
     groq_api_key = "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"
     model = 'llama3-8b-8192' 
@@ -116,8 +104,8 @@ def main():
     </style>
     """    
 
-    icon_text = f"""
-    <div >
+    icon_text = """
+    <div>
        <span style='font-size: 32px;'>LACETRACE</span>
     </div>
     """
@@ -125,34 +113,22 @@ def main():
     st.set_page_config(page_title="Lace-Trace", page_icon=ICON_svg)
     st.title("Welcome to LaceTrace")
     
-    prompt = ChatPromptTemplate.from_messages(
-    [
+    prompt = ChatPromptTemplate.from_messages([
         SystemMessage(content=system_prompt),  
         MessagesPlaceholder(variable_name="chat_history"),  
         HumanMessagePromptTemplate.from_template("{human_input}"), 
-    ]   
-    )
+    ])
 
-    groq_chat = ChatGroq(
-        groq_api_key=groq_api_key, 
-        model_name=model
-    )  
+    groq_chat = ChatGroq(groq_api_key=groq_api_key, model_name=model)  
     
     if 'conversation' not in st.session_state:
-        st.session_state.conversation = LLMChain(
-            llm=groq_chat,
-            prompt=prompt,
-            verbose=False,
-            memory=memory,
-        )
+        st.session_state.conversation = LLMChain(llm=groq_chat, prompt=prompt, verbose=False, memory=memory)
 
     if 'session_id' not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
 
     if "messages" not in st.session_state:
-        st.session_state.messages = [
-            SystemMessage(content="You are a helpful assistant specializing in shoe authentication.")
-        ]   
+        st.session_state.messages = [SystemMessage(content=system_prompt)]   
 
     st.markdown(page_bg_img, unsafe_allow_html=True)
     
@@ -163,41 +139,24 @@ def main():
         st.markdown("###  Built by  Ishan and Shiya.")
         
         if st.button("New Chat"):
-            # Save current chat
-            if len(st.session_state.messages) > 1:
-                chat_df = pd.read_csv(chat_csv_file)
-                last_chat_number = len(chat_df['session_id'].unique())
-                new_chat_name = f"Chat {last_chat_number + 1}"
-                for msg in st.session_state.messages[1:]:
-                    save_chat_message(new_chat_name, "human" if isinstance(msg, HumanMessage) else "ai", msg.content)
-            
-            # Start new chat
             st.session_state.session_id = str(uuid.uuid4())
-            st.session_state.messages = [
-                SystemMessage(content="You are a helpful assistant specializing in shoe authentication.")
-            ]
-            st.session_state.conversation = LLMChain(
-                llm=groq_chat,
-                prompt=prompt,
-                verbose=False,
-                memory=memory,
-            )
+            st.session_state.messages = [SystemMessage(content=system_prompt)]
+            st.session_state.conversation = LLMChain(llm=groq_chat, prompt=prompt, verbose=False, memory=memory)
             st.session_state.image_class = None
             st.rerun()
 
         st.text_input("User: ", key="user_input", on_change=process_input)
 
-        # Display previous chats in sidebar
         st.markdown("### Recents")
         chat_df = pd.read_csv(chat_csv_file)
         unique_sessions = chat_df['session_id'].unique()
-        chat_options = ["Current Chat"] + list(unique_sessions)
+        chat_options = ["Current Chat"] + [f"Chat {i+1}" for i in range(len(unique_sessions))]
         selected_chat = st.selectbox("Select a chat", chat_options)
 
         if selected_chat != "Current Chat":
-            st.session_state.session_id = selected_chat
+            selected_index = chat_options.index(selected_chat) - 1
+            st.session_state.session_id = unique_sessions[selected_index]
 
-    # Main content area
     if selected_chat == "Current Chat":
         st.header("Please upload an image of a shoe")
         file = st.file_uploader("", type=["jpeg", "jpg", "png"])
@@ -211,20 +170,16 @@ def main():
         else:
             st.session_state.image_class = None
 
+        messages = st.session_state.get('messages', [])
+        for i, msg in enumerate(messages[1:]):
+            is_user = isinstance(msg, HumanMessage)
+            message(msg.content, is_user=is_user, key=f"{i}_{('user' if is_user else 'ai')}")
+
     else:
-        session_messages = chat_df[chat_df['session_id'] == selected_chat]
+        session_messages = chat_df[chat_df['session_id'] == st.session_state.session_id]
         for _, msg in session_messages.iterrows():
             message(msg['content'], is_user=(msg['message_type'] == 'human'), key=f"{msg['session_id']}_{_}")
         st.session_state.image_class = None    
-
-    # Display messages for the current session
-    if selected_chat == "Current Chat":
-        messages = st.session_state.get('messages', [])
-        for i, msg in enumerate(messages[1:]):
-            if isinstance(msg, HumanMessage):
-                message(msg.content, is_user=True, key=str(i) + '_user')
-            elif isinstance(msg, AIMessage):
-                message(msg.content, is_user=False, key=str(i) + '_ai')
 
 if __name__ == '__main__':
     main()
