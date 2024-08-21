@@ -6,17 +6,17 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from keras.preprocessing import image
 from skimage.segmentation import mark_boundaries
-
 from inference_sdk import InferenceHTTPClient
+
 CLIENT = InferenceHTTPClient(
     api_url="https://detect.roboflow.com",
     api_key="gRRiczgyB8LDCIQWFFoz"
 )
 
 # Dictionary for class mapping
-d = {'fake air force': 'Fake Air Force 1', 
-     'fake jordan 1': 'Fake Air Jordans', 
-     'ori air force': 'Authentic Air Force 1', 
+d = {'fake air force': 'Fake Air Force 1',
+     'fake jordan 1': 'Fake Air Jordans',
+     'ori air force': 'Authentic Air Force 1',
      'ori jordan 1': 'Authentic Air Jordans'}
 
 from lime import lime_image
@@ -24,19 +24,19 @@ from lime import lime_image
 # Function to get LIME explanation
 def get_explanation(test_image, predict_function):
     explainer = lime_image.LimeImageExplainer()
-
+    
     explanation = explainer.explain_instance(
-        test_image[0], 
+        test_image[0],
         predict_function,  # Use the prediction function
-        top_labels=1, 
-        hide_color=0, 
+        top_labels=1,
+        hide_color=0,
         num_samples=1000
     )
     
     temp, mask = explanation.get_image_and_mask(
-        explanation.top_labels[0], 
-        positive_only=True, 
-        num_features=5, 
+        explanation.top_labels[0],
+        positive_only=True,
+        num_features=5,
         hide_rest=False
     )
     
@@ -49,7 +49,12 @@ def get_explanation(test_image, predict_function):
 
 # Function to predict class and display explanation
 def predict_class(file):
+    # Open the image file
     Img = Image.open(file)
+    
+    # Convert to RGB if the image is in RGBA mode
+    if Img.mode == 'RGBA':
+        Img = Img.convert('RGB')
     
     # Preprocess the image
     test_image = Img.resize((128, 128))
