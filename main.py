@@ -74,7 +74,7 @@ def main():
     initialize_csv_files()
 
     system_prompt = 'You are a helpful assistant specializing in shoe authentication.'
-    groq_api_key = "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"
+    groq_api_key = st.secrets["GROQ_API_KEY"]
     model = 'llama3-8b-8192' 
     conversational_memory_length = 16
     memory = ConversationBufferWindowMemory(k=conversational_memory_length, memory_key="chat_history", return_messages=True)   
